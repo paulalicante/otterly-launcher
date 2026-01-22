@@ -1,0 +1,38 @@
+{
+  "trigger": {
+    "key": "shift",
+    "method": "double-tap",
+    "timeout_ms": 300
+  },
+  "window": {
+    "width": 200,
+    "background_color": "#F5F5F0",
+    "button_color": "#E8E8D8",
+    "button_hover_color": "#D8D8C8",
+    "text_color": "#2C2C2C",
+    "font_family": "Segoe UI",
+    "font_size": 11
+  },
+  "shortcuts": [
+    {
+      "name": "VS Code",
+      "path": "code",
+      "icon": null
+    },
+    {
+      "name": "Screenshot Tool",
+      "path": "C:\\Path\\To\\ScreenshotTool.py",
+      "icon": null
+    },
+    {
+      "name": "Claude Memory",
+      "path": "C:\\Path\\To\\ClaudeMemory.py",
+      "icon": null
+    },
+    {
+      "name": "Notepad",
+      "path": "notepad.exe",
+      "icon": null
+    }
+  ]
+}
