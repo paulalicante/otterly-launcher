@@ -37,8 +37,8 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/launcher.git
-   cd launcher
+   git clone https://github.com/paulalicante/otterly-launcher.git
+   cd otterly-launcher
    ```
 
 2. **Install dependencies**

@@ -48,5 +48,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/yourusername/launcher/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/launcher/releases/tag/v0.1.0
+[Unreleased]: https://github.com/paulalicante/otterly-launcher/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/paulalicante/otterly-launcher/releases/tag/v0.1.0
