@@ -20,18 +20,18 @@
       "icon": null
     },
     {
-      "name": "Screenshot Tool",
-      "path": "C:\\Path\\To\\ScreenshotTool.py",
-      "icon": null
-    },
-    {
-      "name": "Claude Memory",
-      "path": "C:\\Path\\To\\ClaudeMemory.py",
-      "icon": null
-    },
-    {
       "name": "Notepad",
       "path": "notepad.exe",
+      "icon": null
+    },
+    {
+      "name": "Copy",
+      "hotkey": "Ctrl+C",
+      "icon": null
+    },
+    {
+      "name": "Paste",
+      "hotkey": "Ctrl+V",
       "icon": null
     }
   ]

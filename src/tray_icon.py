@@ -7,15 +7,17 @@ from typing import Callable
 class TrayIcon:
     """System tray icon with menu."""
 
-    def __init__(self, on_quit: Callable, on_settings: Callable = None):
+    def __init__(self, on_quit: Callable, on_settings: Callable = None, on_setup_wizard: Callable = None):
         """Initialize tray icon.
 
         Args:
             on_quit: Callback when user selects Quit
             on_settings: Callback when user selects Settings (optional)
+            on_setup_wizard: Callback when user selects Setup Wizard (optional)
         """
         self.on_quit = on_quit
         self.on_settings = on_settings
+        self.on_setup_wizard = on_setup_wizard
         self.icon = None
 
     def create_image(self):
@@ -48,9 +50,17 @@ class TrayIcon:
         if self.on_settings:
             self.on_settings()
 
+    def _on_setup_wizard_clicked(self, icon, item):
+        """Handle setup wizard menu item click."""
+        if self.on_setup_wizard:
+            self.on_setup_wizard()
+
     def run(self):
         """Start the system tray icon."""
         menu_items = []
+
+        if self.on_setup_wizard:
+            menu_items.append(pystray.MenuItem('Setup Wizard', self._on_setup_wizard_clicked))
 
         if self.on_settings:
             menu_items.append(pystray.MenuItem('Settings', self._on_settings_clicked))

@@ -2,6 +2,7 @@
 import tkinter as tk
 import subprocess
 import sys
+import keyboard
 from typing import List, Dict, Callable
 
 
@@ -31,11 +32,17 @@ class PopupWindow:
         self._create_ui()
         self._position_at_cursor()
 
-        # Bind click outside to close
+        # Bind Escape globally for this window
+        self.root.bind_all('<Escape>', lambda e: self.hide())
+        # Bind click on window background to close
+        self.root.bind('<Button-1>', lambda e: self.hide())
+        # Bind focus loss to close
         self.root.bind('<FocusOut>', lambda e: self.hide())
-        self.root.bind('<Escape>', lambda e: self.hide())
 
+        # Force focus and grab keyboard
+        self.root.focus_set()
         self.root.focus_force()
+
         self.root.mainloop()
 
     def _setup_window(self):
@@ -85,14 +92,14 @@ class PopupWindow:
             fg=self.config.get('window', 'text_color', default='#2C2C2C'),
             activebackground=self.config.get('window', 'button_hover_color', default='#D8D8C8'),
             font=(self.config.get('window', 'font_family', default='Segoe UI'),
-                  self.config.get('window', 'font_size', default=11)),
+                  self.config.get('window', 'font_size', default=9)),
             relief=tk.FLAT,
             cursor='hand2',
             anchor='w',
-            padx=15,
-            pady=8
+            padx=5,
+            pady=2
         )
-        button.pack(fill=tk.X, padx=5, pady=2)
+        button.pack(fill=tk.X, padx=2, pady=1)
 
         # Hover effects
         def on_enter(e):
@@ -105,14 +112,28 @@ class PopupWindow:
         button.bind('<Leave>', on_leave)
 
     def _launch_app(self, shortcut: Dict):
-        """Launch the application specified in the shortcut."""
+        """Launch the application or trigger hotkey specified in the shortcut."""
         try:
+            # Check if this is a hotkey shortcut
+            if 'hotkey' in shortcut and shortcut['hotkey']:
+                # Hide window first so hotkey goes to the active app
+                self.hide()
+                # Small delay to ensure window is hidden before sending hotkey
+                self.root.after(50, lambda: keyboard.send(shortcut['hotkey']))
+                return
+
+            # Otherwise, launch as an application
+            path = shortcut.get('path')
+            if not path:
+                print(f"Error: No path or hotkey for {shortcut['name']}")
+                return
+
             # Check if it's a Python script
-            if shortcut['path'].endswith('.py'):
-                subprocess.Popen([sys.executable, shortcut['path']])
+            if path.endswith('.py'):
+                subprocess.Popen([sys.executable, path])
             else:
                 # Try to launch as executable or command
-                subprocess.Popen(shortcut['path'], shell=True)
+                subprocess.Popen(path, shell=True)
 
             self.hide()
         except Exception as e:
@@ -144,12 +165,31 @@ class PopupWindow:
         self.root.geometry(f"+{x}+{y}")
 
     def hide(self):
-        """Hide and destroy the window."""
-        if self.root:
-            self.root.quit()
-            self.root.destroy()
-            self.root = None
-        self.is_visible = False
+        """Hide and destroy the window (thread-safe)."""
+        print(f"hide() called. root={self.root}, is_visible={self.is_visible}")
 
-        if self.on_close:
-            self.on_close()
+        if not self.root:
+            self.is_visible = False
+            if self.on_close:
+                self.on_close()
+            return
+
+        # Schedule destruction in the tkinter thread
+        def destroy_window():
+            print("Destroying window in tkinter thread...")
+            if self.root:
+                self.root.quit()
+                self.root.destroy()
+                self.root = None
+            self.is_visible = False
+
+            print(f"About to call on_close callback: {self.on_close}")
+            if self.on_close:
+                self.on_close()
+            print("hide() complete")
+
+        try:
+            self.root.after(0, destroy_window)
+        except:
+            # If after() fails, do it directly
+            destroy_window()
