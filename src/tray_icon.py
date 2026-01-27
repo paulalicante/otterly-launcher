@@ -2,23 +2,28 @@
 import pystray
 from PIL import Image, ImageDraw
 from typing import Callable
+import uuid
 
 
 class TrayIcon:
     """System tray icon with menu."""
 
-    def __init__(self, on_quit: Callable, on_settings: Callable = None, on_setup_wizard: Callable = None):
+    def __init__(self, on_quit: Callable, on_settings: Callable = None, on_setup_wizard: Callable = None, on_manage_shortcuts: Callable = None):
         """Initialize tray icon.
 
         Args:
             on_quit: Callback when user selects Quit
             on_settings: Callback when user selects Settings (optional)
             on_setup_wizard: Callback when user selects Setup Wizard (optional)
+            on_manage_shortcuts: Callback when user selects Manage Shortcuts (optional)
         """
         self.on_quit = on_quit
         self.on_settings = on_settings
         self.on_setup_wizard = on_setup_wizard
+        self.on_manage_shortcuts = on_manage_shortcuts
         self.icon = None
+        # Use a unique ID for this instance to avoid conflicts with old icons
+        self.icon_id = f"otterly_launcher_{uuid.uuid4().hex[:8]}"
 
     def create_image(self):
         """Create a simple icon image."""
@@ -55,12 +60,17 @@ class TrayIcon:
         if self.on_setup_wizard:
             self.on_setup_wizard()
 
+    def _on_manage_shortcuts_clicked(self, icon, item):
+        """Handle manage shortcuts menu item click."""
+        if self.on_manage_shortcuts:
+            self.on_manage_shortcuts()
+
     def run(self):
         """Start the system tray icon."""
         menu_items = []
 
-        if self.on_setup_wizard:
-            menu_items.append(pystray.MenuItem('Setup Wizard', self._on_setup_wizard_clicked))
+        if self.on_manage_shortcuts:
+            menu_items.append(pystray.MenuItem('Manage Shortcuts', self._on_manage_shortcuts_clicked))
 
         if self.on_settings:
             menu_items.append(pystray.MenuItem('Settings', self._on_settings_clicked))
@@ -68,7 +78,7 @@ class TrayIcon:
         menu_items.append(pystray.MenuItem('Quit', self._on_quit_clicked))
 
         self.icon = pystray.Icon(
-            "otterly_launcher",
+            self.icon_id,
             self.create_image(),
             "Otterly Launcher",
             menu=pystray.Menu(*menu_items)

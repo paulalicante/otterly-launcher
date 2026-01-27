@@ -12,13 +12,18 @@ Otterly Launcher is a minimal, cursor-positioned app launcher for Windows. Think
 ```
 launcher/
 ├── src/
-│   ├── launcher.py          # Main entry point, keyboard hooks, orchestration
-│   ├── config_manager.py    # Config loading/saving (uses %APPDATA%)
-│   ├── popup_window.py      # Tkinter borderless window UI
-│   └── tray_icon.py        # pystray system tray icon
-├── assets/                  # Icons (future)
-├── default_config.json      # Default config template
-└── requirements.txt         # Dependencies: keyboard, pystray, Pillow
+│   ├── launcher.py              # Main entry point, keyboard hooks, orchestration
+│   ├── config_manager.py        # Config loading/saving (uses %APPDATA%)
+│   ├── popup_window.py          # Tkinter borderless window UI
+│   ├── shortcut_manager.py      # Manage shortcuts & add hotkeys (tabbed interface)
+│   ├── hotkey_monitor.py        # Passive hotkey monitoring (integrated into shortcut_manager)
+│   ├── tray_icon.py            # pystray system tray icon
+│   ├── hotkey_scanner.py        # (legacy)
+│   └── simple_hotkey_setup.py   # (legacy - replaced by shortcut_manager)
+├── assets/                      # Icons
+├── default_config.json          # Default config template
+├── requirements.txt             # Dependencies
+└── CHANGELOG.md, CONTRIBUTING.md, README.md, QUICKSTART.md
 ```
 
 ### Component Responsibilities
@@ -108,25 +113,71 @@ Structure:
 
 **Unobtrusive:** Lives in tray, no main window. Disappears when not needed.
 
-## Current Limitations & Future Ideas
+## Recent Changes (Jan 27, 2026)
 
-**v0.1 MVP Status:**
+1. **Merged Manage Shortcuts & Add Hotkeys**
+   - Single window with tabbed interface
+   - Removed duplicate menu items
+   - Removed old "Add Hotkeys" button from bottom
+
+2. **Improved Shortcut Editing**
+   - Added Edit button next to Delete in Manage Shortcuts tab
+   - Right-click on shortcut in popup to edit name
+   - Custom dialog for name editing (not simple dialog)
+
+3. **Performance & Responsiveness**
+   - Moved keyboard hook to separate thread
+   - Non-blocking hook prevents UI freezing
+   - Fixed keyboard interference with text input fields
+   - Performance issues with hotkey monitoring resolved
+
+4. **User Experience**
+   - Made "Save Changes" button prominent (larger, bold, emoji)
+   - Added unsaved changes warning on close
+   - Changes detection for deletions, edits, and new hotkeys
+   - Proper save/cancel flow
+
+5. **Window Management**
+   - Larger default window size (900x600)
+   - Better button layout with improved widths
+   - Fixed Delete button visibility issue by narrowing Target field
+
+6. **Tray Icon Improvements**
+   - Unique icon IDs per instance prevent duplicates
+   - Proper cleanup when quitting
+   - Fixed SystemExit exception from tray callback
+
+## Current Status
+
+**v0.2+ Features Implemented:**
+- ✅ Double-tap Shift trigger
+- ✅ Cursor positioning
+- ✅ System tray with menu
+- ✅ Config system with hot-reload
+- ✅ Manage Shortcuts window (tabbed interface)
+  - ✅ View/hide/delete shortcuts
+  - ✅ Edit shortcut names (Edit button + right-click in popup)
+  - ✅ Support for both hotkeys and applications
+- ✅ Add Hotkeys tab (passive monitoring)
+  - ✅ Detect hotkeys by monitoring keyboard usage
+  - ✅ Name hotkeys before adding
+  - ✅ Integrated into Shortcut Manager (no separate window)
+- ✅ Changes prompt on close (save confirmation)
+- ✅ Right-click edit names in popup launcher
+- ✅ Tray icon management (unique IDs per instance)
+- ✅ Performance optimizations (non-blocking keyboard hook)
+
+**v0.1 MVP Features:**
 - ✅ Double-tap Shift trigger
 - ✅ Cursor positioning
 - ✅ System tray
 - ✅ Config system
-- ❌ Custom icons (path in config, not implemented)
-- ❌ Hold-key trigger (config exists, not implemented)
-- ❌ GUI settings editor (currently opens JSON in Notepad)
-- ❌ Auto-start on Windows login
 
-**Potential Enhancements:**
-- Icon support (load from .ico files)
-- Fuzzy search/filtering when launcher is open
-- Recently used apps (auto-add to shortcuts)
-- Hotkey customization per-app
-- Alternative triggers (hold key, custom combos)
-- Startup task creation helper
+**Future Enhancements:**
+- ❌ Custom icons (path in config, not implemented)
+- ❌ Fuzzy search/filtering
+- ❌ Auto-start on Windows login
+- ❌ Advanced hotkey customization
 
 ## Common Development Tasks
 

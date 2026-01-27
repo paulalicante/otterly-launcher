@@ -6,7 +6,7 @@ import sys
 from config_manager import ConfigManager
 from popup_window import PopupWindow
 from tray_icon import TrayIcon
-from setup_wizard import SetupWizard
+from hotkey_monitor import HotkeyMonitor
 
 
 class OtterlyLauncher:
@@ -20,6 +20,7 @@ class OtterlyLauncher:
         self.last_key_time = 0
         self.key_press_count = 0
         self.key_is_down = False
+        self.tray = None  # Store tray reference for cleanup
 
         # Get trigger settings
         self.trigger_key = self.config.get('trigger', 'key', default='shift')
@@ -31,13 +32,7 @@ class OtterlyLauncher:
 
     def _on_key_event(self, event):
         """Handle keyboard events for trigger detection."""
-        # Check for Escape key to close popup
-        if event.name.lower() == 'esc' and event.event_type == keyboard.KEY_DOWN:
-            if self.popup and self.popup.is_visible:
-                print("Escape detected, closing launcher...")
-                self.popup.hide()
-            return
-
+        # Only respond to the trigger key
         if event.name.lower() != self.trigger_key.lower():
             return
 
@@ -50,20 +45,19 @@ class OtterlyLauncher:
                 return
 
             self.key_is_down = True
-            print(f"Shift pressed. Count: {self.key_press_count + 1}, Time diff: {current_time - self.last_key_time:.3f}s")
 
-            # Check if this is within the timeout window
-            if current_time - self.last_key_time <= self.trigger_timeout:
-                self.key_press_count += 1
+            # Check if this is within the timeout window from the FIRST press
+            time_since_last = current_time - self.last_key_time
 
-                if self.key_press_count >= 2:
-                    # Double-tap detected!
-                    print("Double-tap detected!")
-                    self._show_launcher()
-                    self.key_press_count = 0
-                    self.last_key_time = 0
+            if self.key_press_count == 1 and time_since_last <= self.trigger_timeout:
+                # Second press within timeout - double-tap detected!
+                print(f"Shift pressed twice within {time_since_last:.3f}s - Double-tap detected!")
+                self._show_launcher()
+                self.key_press_count = 0
+                self.last_key_time = 0
             else:
-                # Start new detection window
+                # Either first press, or too much time passed - start new detection window
+                print(f"Shift pressed (first tap). Time since last: {time_since_last:.3f}s")
                 self.key_press_count = 1
                 self.last_key_time = current_time
 
@@ -72,12 +66,17 @@ class OtterlyLauncher:
             self.key_is_down = False
 
     def _show_launcher(self):
-        """Show the launcher popup window."""
+        """Toggle the launcher popup window (show if hidden, hide if visible)."""
+        # If already visible, close it
         if self.popup and self.popup.is_visible:
-            print(f"Launcher already visible, skipping. popup={self.popup}, is_visible={self.popup.is_visible}")
+            print("Launcher already visible, closing...")
+            self.popup.hide()
             return
 
         print("Showing launcher...")
+
+        # Reload config before showing to pick up any changes
+        self.config = ConfigManager()
 
         # Create and show popup in a separate thread
         def show_window():
@@ -103,21 +102,39 @@ class OtterlyLauncher:
             print(f"Could not open settings: {e}")
 
     def _open_setup_wizard(self):
-        """Open the setup wizard to discover and add shortcuts."""
-        print("Opening Setup Wizard...")
+        """Open the hotkey monitor tool."""
+        print("Opening Hotkey Monitor...")
+        # Completely unhook keyboard to avoid conflicts
+        keyboard.unhook_all()
+        monitor = HotkeyMonitor()
+        monitor.run()
+        # Re-hook keyboard after monitor closes
+        keyboard.hook(self._on_key_event)
 
-        def run_wizard():
-            wizard = SetupWizard()
-            wizard.run()
-
-        threading.Thread(target=run_wizard, daemon=True).start()
+    def _open_manage_shortcuts(self):
+        """Open the shortcut manager."""
+        print("Opening Shortcut Manager...")
+        # Completely unhook keyboard to avoid conflicts
+        keyboard.unhook_all()
+        from shortcut_manager import ShortcutManager
+        manager = ShortcutManager()
+        manager.run()
+        # Re-hook keyboard after manager closes
+        keyboard.hook(self._on_key_event)
 
     def _quit(self):
         """Quit the application."""
         print("Quitting Otterly Launcher...")
         self.is_running = False
         keyboard.unhook_all()
-        sys.exit(0)
+        
+        # Stop tray icon if it exists
+        if self.tray:
+            try:
+                self.tray.stop()
+                print("Tray icon stopped")
+            except:
+                pass
 
     def run(self):
         """Start the launcher application."""
@@ -125,14 +142,19 @@ class OtterlyLauncher:
         keyboard.hook(self._on_key_event)
 
         # Create system tray icon
-        tray = TrayIcon(on_quit=self._quit, on_settings=self._open_settings, on_setup_wizard=self._open_setup_wizard)
+        self.tray = TrayIcon(
+            on_quit=self._quit,
+            on_settings=self._open_settings,
+            on_setup_wizard=self._open_setup_wizard,
+            on_manage_shortcuts=self._open_manage_shortcuts
+        )
 
         print("Otterly Launcher is running. Check system tray.")
         print(f"Press {self.trigger_key.upper()} twice quickly to show launcher.")
 
         # Run tray icon (this blocks)
         try:
-            tray.run()
+            self.tray.run()
         except KeyboardInterrupt:
             self._quit()
 

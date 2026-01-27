@@ -32,11 +32,7 @@ class PopupWindow:
         self._create_ui()
         self._position_at_cursor()
 
-        # Bind Escape globally for this window
-        self.root.bind_all('<Escape>', lambda e: self.hide())
-        # Bind click on window background to close
-        self.root.bind('<Button-1>', lambda e: self.hide())
-        # Bind focus loss to close
+        # Bind focus loss to close (double-tap Shift also closes via toggle)
         self.root.bind('<FocusOut>', lambda e: self.hide())
 
         # Force focus and grab keyboard
@@ -63,11 +59,14 @@ class PopupWindow:
         """Create the UI elements."""
         shortcuts = self.config.get_shortcuts()
 
-        if not shortcuts:
-            # No shortcuts configured
+        # Filter to only enabled shortcuts
+        enabled_shortcuts = [s for s in shortcuts if s.get('enabled', True)]
+
+        if not enabled_shortcuts:
+            # No shortcuts configured or all disabled
             label = tk.Label(
                 self.root,
-                text="No shortcuts configured",
+                text="No shortcuts enabled",
                 bg=self.config.get('window', 'background_color', default='#F5F5F0'),
                 fg=self.config.get('window', 'text_color', default='#2C2C2C'),
                 font=(self.config.get('window', 'font_family', default='Segoe UI'),
@@ -78,8 +77,8 @@ class PopupWindow:
             label.pack()
             return
 
-        # Create a button for each shortcut
-        for shortcut in shortcuts:
+        # Create a button for each enabled shortcut
+        for shortcut in enabled_shortcuts:
             self._create_shortcut_button(shortcut)
 
     def _create_shortcut_button(self, shortcut: Dict):
@@ -110,16 +109,63 @@ class PopupWindow:
 
         button.bind('<Enter>', on_enter)
         button.bind('<Leave>', on_leave)
+        
+        # Right-click to edit name
+        def on_right_click(e):
+            self._show_edit_menu(e, shortcut, button)
+        
+        button.bind('<Button-3>', on_right_click)
+
+    def _show_edit_menu(self, event, shortcut: Dict, button):
+        """Show context menu to edit the shortcut name."""
+        import tkinter.simpledialog as simpledialog
+        
+        # Ask user for new name
+        new_name = simpledialog.askstring(
+            "Edit Shortcut Name",
+            f"Enter new name for '{shortcut['name']}':",
+            initialvalue=shortcut['name']
+        )
+        
+        if new_name and new_name != shortcut['name']:
+            # Update the shortcut name
+            shortcut['name'] = new_name
+            button.config(text=new_name)
+            
+            # Save to config
+            shortcuts = self.config.get_shortcuts()
+            for s in shortcuts:
+                if s.get('hotkey') == shortcut.get('hotkey') or s.get('path') == shortcut.get('path'):
+                    s['name'] = new_name
+                    break
+            
+            self.config.config['shortcuts'] = shortcuts
+            self.config.save_config()
+            print(f"Shortcut renamed to: {new_name}")
 
     def _launch_app(self, shortcut: Dict):
         """Launch the application or trigger hotkey specified in the shortcut."""
         try:
             # Check if this is a hotkey shortcut
             if 'hotkey' in shortcut and shortcut['hotkey']:
-                # Hide window first so hotkey goes to the active app
+                print(f"Triggering hotkey: {shortcut['hotkey']}")
+                # Convert hotkey to lowercase format that keyboard library expects
+                # e.g., "Ctrl+Shift+R" -> "ctrl+shift+r"
+                hotkey = shortcut['hotkey'].lower()
+                print(f"Converted to: {hotkey}")
+
+                # Hide window first to restore focus
                 self.hide()
-                # Small delay to ensure window is hidden before sending hotkey
-                self.root.after(50, lambda: keyboard.send(shortcut['hotkey']))
+
+                # Wait briefly for focus to restore, then trigger hotkey
+                import threading
+                def trigger_delayed():
+                    import time
+                    time.sleep(0.15)  # 150ms delay
+                    keyboard.press_and_release(hotkey)
+                    print("Hotkey triggered after delay")
+
+                threading.Thread(target=trigger_delayed, daemon=True).start()
                 return
 
             # Otherwise, launch as an application
@@ -144,9 +190,15 @@ class PopupWindow:
         """Position window at current cursor location."""
         self.root.update_idletasks()  # Update to get accurate size
 
-        # Get cursor position
-        x = self.root.winfo_pointerx()
-        y = self.root.winfo_pointery()
+        # Get actual cursor position using Windows API (more reliable than winfo_pointer)
+        import ctypes
+        class POINT(ctypes.Structure):
+            _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
+
+        point = POINT()
+        ctypes.windll.user32.GetCursorPos(ctypes.byref(point))
+        cursor_x = point.x
+        cursor_y = point.y
 
         # Get window size
         width = self.root.winfo_width()
@@ -156,11 +208,16 @@ class PopupWindow:
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
 
+        # Position window slightly offset from cursor (10px right, 10px down)
+        # so the window appears next to the cursor, not under it
+        x = cursor_x + 10
+        y = cursor_y + 10
+
         # Adjust position to keep window on screen
         if x + width > screen_width:
-            x = screen_width - width - 10
+            x = cursor_x - width - 10  # Place to the left instead
         if y + height > screen_height:
-            y = screen_height - height - 10
+            y = cursor_y - height - 10  # Place above instead
 
         self.root.geometry(f"+{x}+{y}")
 
